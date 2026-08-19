@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+*.spec.bak
+
+# Virtualenv
+.venv/
+venv/
+env/
+
+# Tests
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Packaging outputs
+release/
+*.exe
+*.msi
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Runtime config (local only)
+config.json

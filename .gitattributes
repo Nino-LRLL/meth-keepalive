@@ -1,0 +1,29 @@
+# Normalisation Git — fins de ligne cohérentes, archives propres.
+* text=auto
+
+# Fichiers texte avec fins de ligne LF (code, docs, config).
+*.py text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+*.txt text eol=lf
+*.json text eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+*.spec text eol=lf
+
+# Binaires — jamais modifiés par Git.
+*.png binary
+*.ico binary
+*.jpg binary
+*.gif binary
+*.exe binary
+
+# Exclus des archives (sources uniquement).
+.gitattributes export-ignore
+.editorconfig export-ignore
+.github export-ignore
+assets/screenshot-*.png export-ignore
+assets/social-preview.png export-ignore

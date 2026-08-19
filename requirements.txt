@@ -1,0 +1,5 @@
+# Meth — dépendances Python.
+# Le cœur (Core + Windows + Config) est 100 % stdlib (ctypes).
+# Le System Tray utilise pystray + Pillow (icônes générées localement).
+pystray>=0.19
+Pillow>=9.0
