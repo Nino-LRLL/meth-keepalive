@@ -85,12 +85,12 @@ def main() -> int:
     d.text((cx, cy + 150), "METH", font=f_title, fill=TEXT, anchor="mm")
     f_tag = _font(FONT_REG, 30)
     d.text((cx, cy + 215),
-           "Your AI works. Meth keeps Windows awake.",
+           "Your AI works. Meth keeps the PC awake.",
            font=f_tag, fill=MUTED, anchor="mm")
 
     # Pied : badges texte discrets.
     f_badge = _font(FONT_REG, 22)
-    d.text((cx, H - 56), "Windows 10/11 · Local-first · Open source · No cloud",
+    d.text((cx, H - 56), "Windows + Linux · 100% Rust · Local-first · No cloud",
            font=f_badge, fill=_blend(BG_TOP, MUTED, 0.6), anchor="mm")
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)

@@ -1,0 +1,22 @@
+[package]
+name = "meth"
+version = "0.3.0"
+edition = "2021"
+license = "MIT"
+description = "Keep your PC awake while your AI works - Windows & Linux, no admin, no cloud"
+repository = "https://github.com/Nino-LRLL/meth-keepalive"
+
+[features]
+glow = ["eframe/glow"]
+
+default = ["glow"]
+
+[dependencies]
+dirs = "6.0.0"
+eframe = { version = "0.36", default-features = false, features = ["glow", "default_fonts", "wayland", "x11", "persistence"] }
+env_logger = "0.11.11"
+fs2 = "0.4.3"
+log = "0.4.33"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_Power", "Win32_System_Threading", "Win32_System_Registry", "Win32_UI_WindowsAndMessaging", "Win32_UI_Shell", "Win32_Graphics_Gdi", "Win32_Security", "Win32_System_SystemInformation"] }

@@ -1,4 +1,8 @@
-# Python
+# Rust
+/target/
+Cargo.lock.bak
+
+# Legacy Python (kept in legacy/python/ for reference)
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -6,13 +10,9 @@ __pycache__/
 build/
 dist/
 *.spec.bak
-
-# Virtualenv
 .venv/
 venv/
 env/
-
-# Tests
 .coverage
 htmlcov/
 .pytest_cache/

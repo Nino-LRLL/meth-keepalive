@@ -1,112 +1,63 @@
 # Meth — Architecture
 
-Meth est volontairement petit et séparé en couches testables :
+Meth is deliberately small and split into testable layers (100% Rust since
+v0.3.0):
 
 ```
-             UI (MainWindow + Tray + Settings)
+             UI (egui — matte-metal window)
                         ↓
-                    Meth Core (KeepAlive)
+                    App (state machine)
                         ↓
-             Windows Power API (ctypes, stdlib)
-                        ↓
-                      Windows
+                 backends/ (dispatcher)
+                   ↙               ↘
+        Windows (windows-sys)  Linux (systemd/sysfs)
 ```
 
-Les couches ne dépendent que vers le bas : l'UI ne connaît pas l'API
-Windows, le Core ne connaît pas l'UI. Chaque brique est injectable (voir
-`src/App.py`, la composition root).
+Layers only depend downward: the UI never touches the OS API, the backends
+never know the UI. Each brick is injectable (see `src/app.rs`, the
+composition root).
 
 ## Structure
 
 ```
-Meth/
+meth-keepalive/
+├── Cargo.toml
 ├── src/
-│   ├── Core/
-│   │   └── KeepAlive.py      # état ON/OFF, activation, fail-safe, logs
-│   ├── Windows/
-│   │   ├── Power.py          # GetSystemPowerStatus (secteur/batterie)
-│   │   ├── Lid.py            # RegisterPowerSettingNotification (capot)
-│   │   └── System.py         # SetThreadExecutionState + AutoStart (registre)
-│   ├── UI/
-│   │   ├── MainWindow.py     # fenêtre compacte 300×400 (Tkinter)
-│   │   ├── Tray.py           # pystray (icône, menu, quitter)
-│   │   └── Settings.py       # paramètres (Tkinter)
-│   ├── Config/
-│   │   └── Config.py         # JSON dans %APPDATA%\Meth\config.json
-│   └── App.py                # composition root + contrôleur
-├── tests/                    # 45 tests (API Windows mockée)
-├── docs/
-├── .github/workflows/ci.yml  # CI : tests (Windows + Linux) + build exe
-├── Meth.spec                 # PyInstaller (portable)
-├── build.bat / build.sh      # scripts de build
-├── run.py                    # point d'entrée
-└── README.md / README.fr.md
+│   ├── main.rs               # entry point: CLI (on/off/status/autostart) + GUI launcher + singleton
+│   ├── lib.rs                # module root
+│   ├── keepalive.rs          # ON/OFF engine, activation, fail-safe (injected setter)
+│   ├── config.rs             # JSON config (APPDATA / XDG), tolerant load
+│   ├── app.rs                # state machine: keepalive + config + autostart + power/lid polling
+│   ├── ui.rs                 # egui window, matte-metal disc, settings, dynamic version
+│   └── backends/
+│       ├── mod.rs            # dispatcher (platform_name + active backend)
+│       ├── windows.rs        # SetThreadExecutionState, GetSystemPowerStatus,
+│       │                     #   lid (RegisterPowerSettingNotification), autostart (registre), mutex
+│       ├── linux.rs          # systemd-inhibit child, sysfs power, ACPI lid,
+│       │                     #   autostart (.desktop), flock singleton
+│       └── fallback.rs       # honest fallback (macOS/BSD): keep-alive unavailable
+├── legacy/python/            # v0.1–v0.2 Python prototype (reference only)
+├── docs/                     # this doc, ADRs
+└── assets/                   # icon, screenshots, social preview
 ```
 
-## Couche Windows (ctypes, stdlib pur)
+## Key decisions
 
-### Keep-alive — `SetThreadExecutionState`
+- **Keep-alive is platform-native.** Windows: `SetThreadExecutionState`
+  with `ES_SYSTEM_REQUIRED | ES_CONTINUOUS`. Linux: a `systemd-inhibit
+  --what=sleep:handle-lid-switch --mode=block` child process.
+- **Fail-safe by design.** Windows clears the execution state when the
+  process dies; systemd releases the inhibitor when the child dies. Meth
+  also explicitly restores normal state on deactivation and clean shutdown.
+- **Honest fallback.** On macOS/BSD (or Linux without systemd), Meth
+  refuses — `set_exec_state` returns 0, power/lid stay UNKNOWN. Never a
+  simulated keep-alive.
+- **UI shows real state.** Power (AC/battery/unknown) and lid
+  (open/closed/unknown) are read from the OS on a 2s timer — never invented.
+- **Single instance.** Named mutex (Windows) / flock (Linux).
 
-- **ON** : `ES_CONTINUOUS | ES_SYSTEM_REQUIRED` → Windows reste actif, même
-  capot fermé. L'écran s'éteint normalement (on ne demande pas
-  `ES_DISPLAY_REQUIRED`).
-- **OFF** : `ES_CONTINUOUS` seul (ou `ES_OFF`) → comportement normal.
-- **Fail-safe natif** : Windows efface l'état d'exécution quand le processus
-  qui l'a demandé meurt (crash, fin de session, reboot). Impossible de
-  laisser Windows « coincé » en veille désactivée.
+## Tests
 
-### Capot — `RegisterPowerSettingNotification`
-
-Windows n'expose pas l'état du capot par une API de requête simple. Meth
-s'abonne au GUID `GUID_LIDSWITCH_STATE_CHANGE` (documenté publiquement) avec
-une fenêtre cachée qui reçoit `WM_POWERBROADCAST` /
-`PBT_POWERSETTINGCHANGE`. Les données indiquent l'état (0 = fermé,
-1 = ouvert).
-
-**Important (64 bits)** : `LRESULT` est un `LONG_PTR` (64 bits). Le WNDPROC
-et `DefWindowProcW` doivent utiliser `ctypes.c_ssize_t` — avec `c_long`,
-`CreateWindowExW` échoue silencieusement et le capot reste « INCONNU ».
-
-Honnêteté : si l'abonnement échoue (poste fixe, droits, API indisponible),
-l'état reste « INCONNU » — jamais inventé.
-
-### Alimentation — `GetSystemPowerStatus`
-
-SECTEUR / BATTERIE (+ pourcentage) / INCONNUE. Polling léger toutes les 2 s
-(événementiel, quasi aucun CPU).
-
-### Démarrage Windows — `AutoStart`
-
-Clé registre `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` — pas
-d'admin nécessaire, uniquement si l'utilisateur coche l'option.
-
-## Couche Core — `KeepAlive`
-
-- `active` : état ON/OFF.
-- `activate() / deactivate()` : appelle `set_exec_state` (injectable) et
-  journalise.
-- `shutdown()` : restauration fail-safe explicite (appelée au quit et à la
-  fermeture).
-- Logs : tout est journalisé (`[meth:level] msg`), chaque action est
-  traçable.
-
-## Couche UI
-
-- **MainWindow** : ~300×400, sombre, bouton ON/OFF dominant, statuts capot /
-  PC / énergie, bouton ⚙ paramètres. Fermer la fenêtre = cacher (Meth
-  continue en tray).
-- **Tray** (pystray) : icône reflète l'état ON/OFF, menu
-  Ouvrir / Activer-Désactiver / Paramètres / À propos / Quitter. Quitter
-  appelle `App.on_quit()` → restauration fail-safe + arrêt réel.
-- **Settings** : démarrage avec Windows, affichage tray, (placeholder)
-  secteur uniquement.
-
-## Fail-safe (résumé)
-
-| Événement | Comportement |
-|---|---|
-| Meth crash | Windows efface l'état d'exécution → comportement normal |
-| Windows redémarre | comportement normal au boot |
-| Session expirée | comportement normal |
-| Quitter Meth | `shutdown()` restaure explicitement |
-| Fenêtre fermée (X) | Meth continue en tray — rien n'est relâché |
+`cargo test` — keep-alive, config, app orchestration, per-platform backends
+(real Win32/sysfs calls that never panic) plus honest-fallback tests. CI
+runs on Windows and Linux.

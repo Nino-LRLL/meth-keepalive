@@ -5,6 +5,34 @@ All notable changes to Meth are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-08-19
+
+### Changed
+
+- **Réécriture complète en Rust** — plus de Python. Un seul binaire natif
+  (`meth.exe` sur Windows, `meth` sur Linux) : zéro dépendance runtime,
+  démarrage instantané, RAM plus faible.
+  - Core `KeepAlive` (injection testable), `Config` (JSON APPDATA/XDG),
+    backends `windows.rs` / `linux.rs` / `fallback.rs` (repli honnête),
+    `App` (état + autostart + power/lid), CLI (`on/off/status/autostart`),
+    UI egui (disque métal mat gris-noir, style épuré).
+  - Windows : `SetThreadExecutionState`, `GetSystemPowerStatus`, capot via
+    `RegisterPowerSettingNotification` (fenêtre cachée + pompe de messages),
+    autostart registre, singleton mutex nommé.
+  - Linux : `systemd-inhibit --what=sleep:handle-lid-switch --mode=block`
+    (fail-safe natif), sysfs pour l'alimentation, ACPI pour le capot,
+    autostart `~/.config/autostart/meth.desktop`, singleton flock.
+  - Sans systemd / sans plateforme supportée → refus honnête, jamais de
+    keep-alive simulé.
+- **17 tests Rust (Windows) / 18 (Linux)** remplacent les 91 tests Python
+  (mêmes contrats, mêmes comportements fail-safe).
+- **Ancien code Python** conservé dans `legacy/python/` (référence).
+
+### Removed
+
+- Dépendances Python (tkinter, pystray, PyInstaller) — remplacées par
+  egui/eframe + cargo.
+
 ## [0.2.0] - 2026-08-19
 
 ### Added
@@ -115,6 +143,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Minimum-privilege: never requests admin, never fakes input, never touches
   hardware protections, no network access.
 
-[Unreleased]: https://github.com/Nino-LRLL/meth-keepalive/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Nino-LRLL/meth-keepalive/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Nino-LRLL/meth-keepalive/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Nino-LRLL/meth-keepalive/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Nino-LRLL/meth-keepalive/releases/tag/v0.1.0

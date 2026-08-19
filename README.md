@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/social-preview.png" alt="Meth — Your AI works. Meth keeps Windows awake." width="100%">
+  <img src="assets/social-preview.png" alt="Meth — Your AI works. Meth keeps the PC awake." width="100%">
 </p>
 
 <h1 align="center">Meth</h1>
@@ -16,9 +16,12 @@
     <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT">
   </a>
   <img src="https://img.shields.io/badge/Platform-Windows%20%2F%20Linux-0078d6.svg" alt="Windows 10/11 + Linux">
-  <img src="https://img.shields.io/badge/Python-3.11%2B-3776ab.svg" alt="Python 3.11+">
-  <img src="https://img.shields.io/badge/RAM-%7E45_MB-34d868.svg" alt="~45 MB RAM">
-  <img src="https://img.shields.io/badge/Status-v0.2.0-34d868.svg" alt="v0.2.0">
+  <img src="https://img.shields.io/badge/Language-Rust-orange.svg" alt="100% Rust">
+  <img src="https://img.shields.io/badge/Status-v0.3.0-34d868.svg" alt="v0.3.0">
+</p>
+
+<p align="center">
+  <a href="#fr">🇫🇷 Lire en français</a>
 </p>
 
 ---
@@ -29,14 +32,14 @@ Windows wants to sleep.
 
 **Meth says no.**
 
-Close your laptop. Your screen turns off. Windows stays alive. Your AI keeps
+Close your laptop. Your screen turns off. The PC stays awake. Your AI keeps
 working.
 
 ---
 
 ## ✨ Screenshots
 
-| Meth OFF | Meth ON (halo pulsant) |
+| Meth OFF | Meth ON |
 |:---:|:---:|
 | ![Meth OFF](assets/screenshot-off.png) | ![Meth ON](assets/screenshot-on.png) |
 
@@ -45,7 +48,7 @@ working.
 AI agents can work for hours. Windows may put a laptop to sleep when the lid
 is closed — killing your build, your agent, your download or your server.
 
-Meth keeps Windows alive while your work is still running.
+Meth keeps the PC awake while your work is still running.
 
 **One button. No account. No cloud. No admin. No mouse-jiggling hacks.**
 
@@ -54,18 +57,22 @@ Meth keeps Windows alive while your work is still running.
 ```
 Lid closed        Meth ON
     ↓                ↓
-Screen off     Windows stays awake
+Screen off     System stays awake
     ↓                ↓
    └──────→  AI keeps working
 ```
 
-Meth uses the **native Windows power API** — `SetThreadExecutionState` with
-`ES_SYSTEM_REQUIRED` + `ES_CONTINUOUS` — to ask Windows to stay awake. The
-screen is **not** kept on: it turns off normally, exactly as it should.
+Meth uses the **native OS power APIs**:
+- Windows: `SetThreadExecutionState(ES_SYSTEM_REQUIRED | ES_CONTINUOUS)`.
+- Linux: a `systemd-inhibit --what=sleep:handle-lid-switch --mode=block`
+  child process.
+
+The screen is **not** kept on: it turns off normally, exactly as it should.
+Only the system sleep (and the lid-close action on Linux) is inhibited.
 
 ## 🚀 Quick start
 
-### Portable (recommended)
+### Portable (recommended, Windows)
 
 1. Download **`Meth-Portable.zip`** from the
    [Releases](https://github.com/Nino-LRLL/meth-keepalive/releases) page.
@@ -74,13 +81,16 @@ screen is **not** kept on: it turns off normally, exactly as it should.
 
 No installation. No Python. No admin.
 
-### From source
+### From source (Windows & Linux)
 
-```bat
+```bash
 git clone https://github.com/Nino-LRLL/meth-keepalive.git
 cd meth-keepalive
-pip install -r requirements.txt
-python run.py
+cargo build --release
+./target/release/meth          # open the window
+./target/release/meth on       # CLI: keep awake
+./target/release/meth off      # CLI: restore normal
+./target/release/meth status   # CLI: print state
 ```
 
 ## 🎮 Usage
@@ -90,24 +100,13 @@ python run.py
 3. Close the laptop. Screen off, the PC stays awake, work continues.
 4. Done? Click **OFF** — the PC returns to normal.
 
-Closing the window hides Meth to the **system tray** — it keeps working.
-Use **Quit** in the tray menu (or in the window) to stop it completely.
+The window shows the **real** state: ON/OFF, power source (AC / battery /
+unknown) and lid state (open / closed / unknown) — never invented.
 
 ## 🐧 Linux
 
 Meth runs on **any PC — Windows and Linux** (macOS is not supported: Meth
 refuses honestly, it never pretends to keep the system awake there).
-
-On Linux, the same one-button behavior uses **systemd** (the standard init
-on virtually every modern desktop):
-
-```
-Lid closed        Meth ON
-    ↓                ↓
-Screen off     systemd-inhibit --what=sleep:handle-lid-switch
-    ↓                ↓
-   └──────→  everything keeps running
-```
 
 - The screen turns off normally — only the **system sleep** and the
   **lid-switch action** are inhibited (no suspend, no hibernate).
@@ -115,28 +114,12 @@ Screen off     systemd-inhibit --what=sleep:handle-lid-switch
   exits or crashes — the PC can never stay locked awake.
 - No `systemd`? Meth **refuses honestly** (never a fake keep-alive).
 - Power is read from sysfs (`/sys/class/power_supply`), lid state from ACPI
-  (`/proc/acpi/button/lid`, `INCONNU` when absent), auto-start via
+  (`/proc/acpi/button/lid`, unknown when absent), auto-start via
   `~/.config/autostart/meth.desktop`, config in `$XDG_CONFIG_HOME/meth/`.
-
-### Run from source on Linux
-
-```bash
-pip install -r requirements.txt
-python run.py            # window + tray
-python run.py --tray     # start silent in the tray
-```
-
-Requires `python3-tk` (tkinter) for the window and `pystray` for the tray
-(installed by requirements). The keep-alive itself is 100 % stdlib.
-
-> Note: the tray backend on Linux needs a systray/AppIndicator — if your
-> desktop has none, the window is still fully functional.
 
 ## ✨ Features
 
-- 🟢 **One big ON/OFF button** — a glowing circle that pulses while active.
-- 🖥️ **System tray** — close-to-tray, icon reflects the real state, dynamic
-  Activate/Deactivate menu.
+- 🟢 **One big ON/OFF button** — a matte-metal disc, sober Apple-style.
 - 📊 **Honest status display** — lid (open/closed/unknown), power
   (AC/battery/unknown). Never invented.
 - 🔒 **Native keep-alive** — works with OpenCode, Pi, FreeBuff, local LLMs,
@@ -145,8 +128,8 @@ Requires `python3-tk` (tkinter) for the window and `pystray` for the tray
   systemd releases the inhibitor) when Meth exits or crashes; explicit
   restore on shutdown too.
 - 🔌 **Single instance** — launching Meth twice refuses the second instance.
-- 🪶 **Ultra light** — ~45 MB RAM (packaged), zero network, near-zero CPU at
-  rest.
+- ⚡ **100% Rust** — one native binary, no Python, no runtime, near-zero
+  CPU at rest, tiny RAM.
 - 🔐 **Local-first** — no account, no cloud, no telemetry, no internet.
 
 ## 🛡️ Safety
@@ -164,50 +147,51 @@ See [SECURITY.md](SECURITY.md) for details.
 ## 🏗️ Architecture
 
 ```
-             UI (MainWindow + Tray + Settings)
+             UI (egui — matte-metal window)
                         ↓
-                    Meth Core (KeepAlive)
+                    App (state machine)
                         ↓
-                 src/backends (dispatcher)
+                 backends/ (dispatcher)
                    ↙               ↘
-        Windows (ctypes)     Linux (systemd/sysfs)
+        Windows (windows-sys)  Linux (systemd/sysfs)
 ```
 
 | Layer | Path | Role |
 |---|---|---|
-| **Core** | `src/Core/` | keep-alive engine (state, activation, fail-safe) |
-| **Backends** | `src/backends.py` | dispatcher Windows / Linux / other (honest fallback) |
-| **Windows** | `src/Windows/` | `Power`, `Lid`, `System` (exec state, registry auto-start) |
-| **Linux** | `src/Linux/` | `Power` (sysfs), `Lid` (ACPI), `System` (systemd-inhibit, .desktop auto-start) |
-| **UI** | `src/UI/` | compact 320×460 window, tray, settings |
-| **Config** | `src/Config/` | JSON settings in `%APPDATA%\Meth\config.json` |
+| **Core** | `src/keepalive.rs` | keep-alive engine (state, activation, fail-safe) |
+| **Backends** | `src/backends/` | `windows.rs` / `linux.rs` / `fallback.rs` (honest fallback) |
+| **App** | `src/app.rs` | ON/OFF state, config persistence, autostart, power/lid polling |
+| **Config** | `src/config.rs` | JSON settings in `%APPDATA%\Meth\config.json` / `$XDG_CONFIG_HOME/meth/` |
+| **UI** | `src/ui.rs` | egui window, matte-metal disc, settings |
+| **CLI** | `src/main.rs` | `on` / `off` / `status` / `autostart` / GUI launcher |
 
-UI is fully separated from Core and Windows — every layer is testable in
-isolation (the suite mocks the Windows API). See
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+The UI is fully separated from the backends — every layer is testable in
+isolation. The Python prototype (v0.1–v0.2) is kept in
+[`legacy/python/`](legacy/python/README.md) for reference.
 
 ## 🧪 Tests
 
-```
-python -m unittest discover -s tests -v
+```bash
+cargo test
 ```
 
-**91 tests** — keep-alive, power, lid parsing (Windows + Linux), config,
-app orchestration, auto-start, single-instance — plus a **real**
-`SetThreadExecutionState` integration test. CI runs them on Windows and
-Linux (91/91 green on both).
+**17 tests (Windows) / 18 tests (Linux)** — keep-alive, power, lid parsing,
+config, app orchestration, auto-start, single-instance, honest fallback,
+plus real Win32/sysfs integration calls that never panic. CI runs them on
+Windows and Linux.
 
 ## 🗺️ Roadmap
 
-- **v0.1** ✅ — mini UI, ON/OFF, tray, keep-alive, lid detection, restore,
+- **v0.1** ✅ — mini UI, ON/OFF, keep-alive, lid detection, restore,
   Windows 10/11, tests, portable build.
 - **v0.2** ✅ — **Linux support** (systemd-inhibit, sysfs, ACPI, autostart,
-  XDG config), platform dispatcher (`src/backends.py`), honest fallback
-  (no macOS), matte-metal Apple-style UI.
-- **v0.3** — sessions & heartbeat (an AI can declare « still working »),
-  profiles, battery-aware behavior (auto-off on low battery).
-- **v1.0** — advanced sessions, heartbeat API, CLI, triggers.
-- **v2.0** — first-party integrations (OpenCode, Pi, FreeBuff), SDK.
+  XDG config), platform dispatcher, honest fallback (no macOS).
+- **v0.3** ✅ — **100% Rust rewrite** (single native binary), CLI, egui UI,
+  matte-metal style.
+- **v0.4** — system tray (tray-icon), sessions & heartbeat (an AI can
+  declare « still working »), battery-aware behavior (auto-off on low battery).
+- **v1.0** — advanced sessions, heartbeat API, triggers, first-party
+  integrations (OpenCode, Pi, FreeBuff).
 
 ## 🤝 Contributing
 
@@ -220,5 +204,39 @@ focused and reliable.
 [MIT](LICENSE) — free to use, modify and share.
 
 ---
+
+<a name="fr"></a>
+## 🇫🇷 Version française
+
+> **Meth.** *Ton IA travaille. Meth garde le PC éveillé.*
+
+Meth est l'extension **« l'IA qui ne dort pas »** : quand elle est activée,
+ferme le capot → l'écran s'éteint normalement mais **le PC reste actif et
+tout ce qui tourne continue** (IA, build, téléchargement, serveur).
+
+- **100 % Rust** — un seul binaire natif (Windows `meth.exe`, Linux `meth`).
+- **Windows** : API native `SetThreadExecutionState` + statut capot/alim.
+- **Linux** : `systemd-inhibit` (fail-safe natif), sysfs, ACPI.
+- **Honnêteté** : sans systemd, sans plateforme supportée → refus clair,
+  jamais de keep-alive simulé. Le capot/l'alimentation affichés sont les
+  vrais états lus sur le système.
+
+### Démarrage rapide
+
+```bash
+cargo build --release
+./target/release/meth          # fenêtre
+./target/release/meth on       # activer (CLI)
+./target/release/meth off      # désactiver (CLI)
+./target/release/meth status   # état réel
+```
+
+### Installer sur Windows
+
+```bat
+cargo build --release
+copy target\release\meth.exe Meth.exe
+rem -> double-clic sur Meth.exe, puis clique sur ON
+```
 
 > **Meth.** *Your AI works. Meth keeps the PC awake.*
