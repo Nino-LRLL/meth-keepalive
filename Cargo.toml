@@ -1,6 +1,6 @@
 [package]
 name = "meth"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 license = "MIT"
 description = "Keep your PC awake while your AI works - Windows & Linux, no admin, no cloud"
@@ -20,3 +20,6 @@ log = "0.4.33"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_Power", "Win32_System_Threading", "Win32_System_Registry", "Win32_UI_WindowsAndMessaging", "Win32_UI_Shell", "Win32_Graphics_Gdi", "Win32_Security", "Win32_System_SystemInformation"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+zbus = { version = "5", default-features = false, features = ["blocking-api", "async-io"] }

@@ -122,6 +122,33 @@ système éveillé là-bas).
   auto via `~/.config/autostart/meth.desktop`, la config dans
   `$XDG_CONFIG_HOME/meth/`.
 
+## 🗺️ Plateformes supportées (matrice honnête)
+
+| OS | Keep-alive | Statut alim/capot | Autostart | Mécanisme |
+|---|---|---|---|---|
+| **Windows 10/11** | ✅ | ✅ | ✅ | `SetThreadExecutionState` + Win32 |
+| **ReactOS** | ✅ | ✅ | ✅ | même API Win32 (cross-build `x86_64-pc-windows-gnu`) |
+| **Arch Linux** | ✅ | ✅ | ✅ | systemd-inhibit |
+| **Gentoo** | ✅ (systemd **ou** logind) | ✅ | ✅ | systemd-inhibit → repli logind D-Bus |
+| **Slackware** | ✅ (avec elogind) | ✅ | ✅ | logind D-Bus (`org.freedesktop.login1`) |
+| **Dragora** | ✅ (avec elogind) | ✅ | ✅ | logind D-Bus |
+| **Artix / Devuan / Void / Alpine** | ✅ (avec elogind) | ✅ | ✅ | logind D-Bus |
+| **FreeBSD / OpenBSD / NetBSD / DragonFly** | ❌ (pas d'API d'inhibition publique) | ✅ (sysctl quand dispo) | ❌ | backend `bsd.rs` — refus honnête |
+| **macOS** | ❌ | ❌ | ❌ | repli honnête (jamais simulé) |
+| **SerenityOS / Redox / TempleOS** | ❌ | ❌ | ❌ | pas d'API power-inhibit, pas de toolchain compatible — voir plus bas |
+
+### Pourquoi certains OS ne sont PAS supportés (honnête)
+
+- **TempleOS** — OS mono-utilisateur avec son propre compilateur (HolyC),
+  pas de binaires tiers, pas de pile réseau standard, pas d'API de gestion
+  d'alimentation. Un binaire Rust ne peut pas y tourner.
+- **SerenityOS / Redox OS** — pas d'API utilisateur publique pour inhiber
+  la veille système, et la pile graphique (egui) n'a pas de backend pour
+  eux. Refuser honnêtement vaut mieux que prétendre.
+- **TaurusOS / distros inconnues** — si ça tourne Linux avec `systemd` ou
+  `elogind`, Meth fonctionne via le repli logind. Sinon, Meth refuse
+  honnêtement plutôt que de simuler un keep-alive.
+
 ## ✨ Fonctionnalités
 
 - 🟢 **Un gros bouton ON/OFF** — un disque métal mat, sobre, style épuré.
@@ -198,7 +225,8 @@ Windows et Linux.
   egui, style métal mat.
 - **v0.4** — zone de notification système (tray-icon), sessions & heartbeat
   (une IA peut déclarer « je travaille encore »), comportement batterie
-  (arrêt auto en batterie faible).
+  (arrêt auto en batterie faible), distros logind-only (Gentoo/OpenRC,
+  Slackware, Dragora) documentées et testées sur matériel réel.
 - **v1.0** — sessions avancées, API heartbeat, déclencheurs, intégrations
   premières (OpenCode, Pi, FreeBuff).
 

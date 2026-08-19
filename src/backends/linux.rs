@@ -41,7 +41,16 @@ pub fn set_exec_state(flags: u32) -> u32 {
     }
 }
 
-static INHIBIT: Mutex<Option<Child>> = Mutex::new(None);
+/// One active inhibitor: either a `systemd-inhibit` child OR a logind
+/// D-Bus Inhibit file descriptor (elogind distros: Gentoo/OpenRC,
+/// Slackware, Dragora, Artix, Devuan, Void, …). Both release on drop.
+struct Inhibit {
+    child: Option<Child>,
+    logind_fd: Option<std::os::fd::OwnedFd>,
+    backend: &'static str,
+}
+
+static INHIBIT: Mutex<Option<Inhibit>> = Mutex::new(None);
 static HAS_SYSTEMD: AtomicBool = AtomicBool::new(true);
 
 fn systemd_available() -> bool {
@@ -63,44 +72,93 @@ fn systemd_available() -> bool {
 }
 
 fn start_inhibit() -> bool {
-    if !systemd_available() {
-        log::warn!("METH ON refusé : systemd absent — aucun inhibiteur possible");
-        return false;
-    }
     let mut guard = INHIBIT.lock().unwrap();
     if guard.is_some() {
         return true; // already running
     }
-    let child = Command::new("systemd-inhibit")
-        .args([
-            "--what=sleep:handle-lid-switch",
-            "--mode=block",
-            "--who=Meth",
-            "--why=AI work in progress",
-        ])
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn();
-    match child {
-        Ok(c) => {
-            *guard = Some(c);
-            log::info!("METH ON — systemd-inhibit actif (sleep + capot bloqués)");
+
+    // 1) Preferred: systemd-inhibit child (systemd distros: Arch, Fedora,
+    //    Ubuntu, Gentoo-systemd, …).
+    if systemd_available() {
+        let child = Command::new("systemd-inhibit")
+            .args([
+                "--what=sleep:handle-lid-switch",
+                "--mode=block",
+                "--who=Meth",
+                "--why=AI work in progress",
+            ])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn();
+        match child {
+            Ok(c) => {
+                *guard = Some(Inhibit {
+                    child: Some(c),
+                    logind_fd: None,
+                    backend: "systemd-inhibit",
+                });
+                log::info!("METH ON — systemd-inhibit actif (sleep + capot bloqués)");
+                return true;
+            }
+            Err(e) => log::warn!("systemd-inhibit indisponible ({e}), repli logind…"),
+        }
+    }
+
+    // 2) Fallback: logind D-Bus Inhibit — works with systemd-logind AND
+    //    elogind (Gentoo/OpenRC, Slackware 15+, Dragora, Artix, Devuan,
+    //    Void, Alpine with elogind). Holds the returned fd = inhibitor.
+    match logind_inhibit() {
+        Ok(fd) => {
+            *guard = Some(Inhibit {
+                child: None,
+                logind_fd: Some(fd),
+                backend: "logind",
+            });
+            log::info!("METH ON — logind Inhibit actif (sleep + capot bloqués)");
             true
         }
         Err(e) => {
-            log::error!("METH ON échec systemd-inhibit: {e}");
+            log::error!("METH ON refusé : ni systemd-inhibit ni logind ({e})");
             false
         }
     }
 }
 
+/// Call `org.freedesktop.login1.Manager.Inhibit` on the system bus and
+/// keep the returned fd (the inhibitor stays while the fd is open).
+fn logind_inhibit() -> Result<std::os::fd::OwnedFd, String> {
+    use zbus::blocking::Connection;
+
+    let conn = Connection::system().map_err(|e| format!("connexion D-Bus système: {e}"))?;
+    let reply = conn
+        .call_method(
+            Some("org.freedesktop.login1"),
+            "/org/freedesktop/login1",
+            Some("org.freedesktop.login1.Manager"),
+            "Inhibit",
+            &("sleep:handle-lid-switch", "Meth", "AI work in progress", "block"),
+        )
+        .map_err(|e| format!("appel logind Inhibit: {e}"))?;
+
+    use zbus::zvariant::OwnedFd as ZFd;
+    let fd: ZFd = reply
+        .body()
+        .deserialize()
+        .map_err(|e| format!("lecture du fd logind: {e}"))?;
+    Ok(fd.into())
+}
+
 fn stop_inhibit() {
     let mut guard = INHIBIT.lock().unwrap();
-    if let Some(mut child) = guard.take() {
-        let _ = child.kill();
-        let _ = child.wait();
-        log::info!("METH OFF — inhibiteur relâché (système normal)");
+    if let Some(mut inh) = guard.take() {
+        if let Some(mut child) = inh.child.take() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+        // Dropping logind_fd closes the fd → logind releases the inhibitor.
+        drop(inh.logind_fd.take());
+        log::info!("METH OFF — inhibiteur {} relâché (système normal)", inh.backend);
     }
 }
 
@@ -291,6 +349,21 @@ mod tests {
     fn off_always_succeeds() {
         stop_inhibit();
         assert_eq!(set_exec_state(crate::keepalive::ES_OFF), 0);
+    }
+
+    #[test]
+    fn logind_call_never_panics() {
+        // Real D-Bus call on the test machine: Ok(fd) when a session bus
+        // + logind exist (CI/desktop), Err otherwise. Never a panic.
+        let r = super::logind_inhibit();
+        match r {
+            Ok(fd) => {
+                // Holding the fd keeps the inhibitor; releasing it here
+                // (test end) releases the inhibitor. Safe on any machine.
+                drop(fd);
+            }
+            Err(_) => { /* honest: no logind on this host */ }
+        }
     }
 
     #[test]

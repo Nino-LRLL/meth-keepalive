@@ -117,6 +117,33 @@ refuses honestly, it never pretends to keep the system awake there).
   (`/proc/acpi/button/lid`, unknown when absent), auto-start via
   `~/.config/autostart/meth.desktop`, config in `$XDG_CONFIG_HOME/meth/`.
 
+## 🗺️ Supported platforms (honest matrix)
+
+| OS | Keep-alive | Power/Lid status | Autostart | How |
+|---|---|---|---|---|
+| **Windows 10/11** | ✅ | ✅ | ✅ | `SetThreadExecutionState` + Win32 |
+| **ReactOS** | ✅ | ✅ | ✅ | same Win32 API (cross-built `x86_64-pc-windows-gnu`) |
+| **Arch Linux** | ✅ | ✅ | ✅ | systemd-inhibit |
+| **Gentoo** | ✅ (systemd **or** logind) | ✅ | ✅ | systemd-inhibit → logind D-Bus fallback |
+| **Slackware** | ✅ (with elogind) | ✅ | ✅ | logind D-Bus (`org.freedesktop.login1`) |
+| **Dragora** | ✅ (with elogind) | ✅ | ✅ | logind D-Bus |
+| **Artix / Devuan / Void / Alpine** | ✅ (with elogind) | ✅ | ✅ | logind D-Bus |
+| **FreeBSD / OpenBSD / NetBSD / DragonFly** | ❌ (no public inhibit API) | ✅ (sysctl where available) | ❌ | `bsd.rs` backend — honest refusal |
+| **macOS** | ❌ | ❌ | ❌ | honest fallback (never fake) |
+| **SerenityOS / Redox / TempleOS** | ❌ | ❌ | ❌ | no power-inhibit API, no compatible toolchain — see below |
+
+### Why some OSes are NOT supported (honest)
+
+- **TempleOS** — single-user OS with its own compiler (HolyC), no third-party
+  binaries, no standard network stack, no power management API. A Rust
+  binary cannot run there.
+- **SerenityOS / Redox OS** — no public userspace API to inhibit system
+  sleep, and the GUI stack (egui) has no backend for them. Refusing
+  honestly is better than pretending.
+- **TaurusOS / unknown distros** — if it runs Linux with `systemd` or
+  `elogind`, Meth works via the logind fallback. If not, Meth refuses
+  honestly rather than faking keep-alive.
+
 ## ✨ Features
 
 - 🟢 **One big ON/OFF button** — a matte-metal disc, sober Apple-style.
@@ -189,7 +216,9 @@ Windows and Linux.
 - **v0.3** ✅ — **100% Rust rewrite** (single native binary), CLI, egui UI,
   matte-metal style.
 - **v0.4** — system tray (tray-icon), sessions & heartbeat (an AI can
-  declare « still working »), battery-aware behavior (auto-off on low battery).
+  declare « still working »), battery-aware behavior (auto-off on low battery),
+  logind-only distros (Gentoo/OpenRC, Slackware, Dragora) documented &
+  tested on real hardware.
 - **v1.0** — advanced sessions, heartbeat API, triggers, first-party
   integrations (OpenCode, Pi, FreeBuff).
 

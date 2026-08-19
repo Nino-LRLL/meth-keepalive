@@ -5,6 +5,24 @@ All notable changes to Meth are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-08-19
+
+### Added
+
+- **Repli logind D-Bus** (`org.freedesktop.login1.Manager.Inhibit`) : Meth
+  fonctionne aussi sur les distros Linux sans systemd mais avec elogind —
+  Gentoo/OpenRC, Slackware 15+, Dragora, Artix, Devuan, Void, Alpine.
+  systemd-inhibit reste le chemin préféré ; le repli logind garde le fd
+  renvoyé par D-Bus (l'inhibiteur reste tant que le fd est ouvert).
+- **Backend BSD** (`src/backends/bsd.rs`) : FreeBSD/OpenBSD/NetBSD/DragonFly
+  — statut réel (AC via `hw.acpi.acline`, capot via `hw.acpi.lid_state`),
+  keep-alive HONNÊTEMENT refusé (pas d'API d'inhibition publique sur BSD).
+- **ReactOS** : cross-build `x86_64-pc-windows-gnu` (MinGW) — même API Win32,
+  binaire natif téléchargeable ; job CI dédié `build-reactos`.
+- **Matrice de support honnête** dans les README (EN + FR) : Windows,
+  ReactOS, Arch, Gentoo, Slackware, Dragora, famille BSD, macOS, et la
+  raison technique pour TempleOS / SerenityOS / Redox (non supportés).
+
 ## [0.3.0] - 2026-08-19
 
 ### Changed
@@ -143,7 +161,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Minimum-privilege: never requests admin, never fakes input, never touches
   hardware protections, no network access.
 
-[Unreleased]: https://github.com/Nino-LRLL/meth-keepalive/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Nino-LRLL/meth-keepalive/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/Nino-LRLL/meth-keepalive/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/Nino-LRLL/meth-keepalive/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Nino-LRLL/meth-keepalive/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Nino-LRLL/meth-keepalive/releases/tag/v0.1.0

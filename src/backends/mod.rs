@@ -11,15 +11,37 @@
 pub mod windows;
 #[cfg(target_os = "linux")]
 pub mod linux;
-#[cfg(not(any(target_os = "windows", target_os = "linux")))]
+#[cfg(any(
+    target_os = "freebsd",
+    target_os = "openbsd",
+    target_os = "netbsd",
+    target_os = "dragonfly"
+))]
+pub mod bsd;
+#[cfg(not(any(
+    target_os = "windows",
+    target_os = "linux",
+    target_os = "freebsd",
+    target_os = "openbsd",
+    target_os = "netbsd",
+    target_os = "dragonfly"
+)))]
 pub mod fallback;
 
-/// Platform name reported in the UI/status ("windows" | "linux" | "other").
+/// Platform name reported in the UI/status.
+/// ("windows" | "linux" | "bsd" | "other")
 pub fn platform_name() -> &'static str {
     if cfg!(target_os = "windows") {
         "windows"
     } else if cfg!(target_os = "linux") {
         "linux"
+    } else if cfg!(any(
+        target_os = "freebsd",
+        target_os = "openbsd",
+        target_os = "netbsd",
+        target_os = "dragonfly"
+    )) {
+        "bsd"
     } else {
         "other"
     }
@@ -30,5 +52,19 @@ pub fn platform_name() -> &'static str {
 pub use windows as active;
 #[cfg(target_os = "linux")]
 pub use linux as active;
-#[cfg(not(any(target_os = "windows", target_os = "linux")))]
+#[cfg(any(
+    target_os = "freebsd",
+    target_os = "openbsd",
+    target_os = "netbsd",
+    target_os = "dragonfly"
+))]
+pub use bsd as active;
+#[cfg(not(any(
+    target_os = "windows",
+    target_os = "linux",
+    target_os = "freebsd",
+    target_os = "openbsd",
+    target_os = "netbsd",
+    target_os = "dragonfly"
+)))]
 pub use fallback as active;
